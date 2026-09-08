@@ -5,7 +5,6 @@ import path from 'node:path'
 import cookieParser from 'cookie-parser'
 import { router } from './api.js'
 import { attachWS } from './ws.js'
-import { seedDemo } from './db.js'
 
 const app = express()
 const server = http.createServer(app)
@@ -13,6 +12,7 @@ const isProduction = process.env.NODE_ENV === 'production'
 
 app.disable('x-powered-by')
 if (process.env.TRUST_PROXY === 'true') app.set('trust proxy', 1)
+if (isProduction && (!process.env.DSH_SECRET || process.env.DSH_SECRET.length < 32)) throw new Error('DSH_SECRET must be set to at least 32 characters in production')
 
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff')
@@ -23,7 +23,6 @@ app.use((req, res, next) => {
   next()
 })
 
-// Small dependency-free IP rate limiter. It protects authentication and also puts a ceiling on API abuse.
 const buckets = new Map()
 function rateLimit(max, windowMs) {
   return (req, res, next) => {
@@ -62,14 +61,12 @@ if (fs.existsSync(DIST)) {
 
 app.use((req, res) => res.status(404).json({ error: 'Не найдено' }))
 app.use((err, req, res, next) => {
-  const status = err.status || 500
+  const status = Number(err.status) || 500
   if (status >= 500) console.error(err)
   if (res.headersSent) return next(err)
   res.status(status).json({ error: err.expose ? err.message : 'Ошибка сервера' })
 })
 
-if (process.env.DSH_SEED_DEMO === 'true') await seedDemo()
 attachWS(server)
-
 const PORT = Number(process.env.PORT) || 3001
 server.listen(PORT, () => console.log(`[dsh] Discord clone ready on port ${PORT}`))
