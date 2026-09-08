@@ -11,8 +11,9 @@ const app = express()
 const server = http.createServer(app)
 const isProduction = process.env.NODE_ENV === 'production'
 
-// Basic security headers without adding another runtime dependency.
 app.disable('x-powered-by')
+if (process.env.TRUST_PROXY === 'true') app.set('trust proxy', 1)
+
 app.use((req, res, next) => {
   res.setHeader('X-Content-Type-Options', 'nosniff')
   res.setHeader('X-Frame-Options', 'DENY')
@@ -22,7 +23,33 @@ app.use((req, res, next) => {
   next()
 })
 
-// Keep JSON requests bounded. Large files should use a dedicated upload endpoint.
+// Small dependency-free IP rate limiter. It protects authentication and also puts a ceiling on API abuse.
+const buckets = new Map()
+function rateLimit(max, windowMs) {
+  return (req, res, next) => {
+    const key = `${req.ip}:${req.path === '/login' || req.path === '/register' ? 'auth' : 'api'}`
+    const now = Date.now()
+    let bucket = buckets.get(key)
+    if (!bucket || now - bucket.started >= windowMs) bucket = { started: now, count: 0 }
+    bucket.count++
+    buckets.set(key, bucket)
+    res.setHeader('X-RateLimit-Limit', max)
+    res.setHeader('X-RateLimit-Remaining', Math.max(0, max - bucket.count))
+    if (bucket.count > max) {
+      res.setHeader('Retry-After', Math.ceil((bucket.started + windowMs - now) / 1000))
+      return res.status(429).json({ error: 'Слишком много запросов. Попробуйте позже.' })
+    }
+    next()
+  }
+}
+setInterval(() => {
+  const cutoff = Date.now() - 15 * 60_000
+  for (const [key, bucket] of buckets) if (bucket.started < cutoff) buckets.delete(key)
+}, 5 * 60_000).unref()
+
+app.use('/api/login', rateLimit(10, 60_000))
+app.use('/api/register', rateLimit(5, 60_000))
+app.use('/api', rateLimit(300, 60_000))
 app.use(express.json({ limit: '2mb', strict: true }))
 app.use(cookieParser())
 app.use('/api', router)
