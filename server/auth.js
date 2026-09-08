@@ -1,5 +1,6 @@
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcryptjs'
+import { randomBytes } from 'node:crypto'
 import { get, run, uid, now } from './db.js'
 
 const isProduction = process.env.NODE_ENV === 'production'
@@ -8,7 +9,9 @@ if (isProduction && (!configuredSecret || configuredSecret.length < 32)) {
   throw new Error('DSH_SECRET must be set to a random value of at least 32 characters in production')
 }
 
-export const SECRET = configuredSecret || (isProduction ? '' : 'discord-clone-dev-secret')
+// Never use a predictable JWT secret. Development gets a process-local random secret;
+// production must configure DSH_SECRET so tokens survive restarts.
+export const SECRET = configuredSecret || randomBytes(48).toString('hex')
 export const COOKIE = 'dsh_token'
 export const COOKIE_OPTIONS = {
   httpOnly: true,
@@ -19,10 +22,10 @@ export const COOKIE_OPTIONS = {
 }
 
 export function sign(user) {
-  return jwt.sign({ id: user.id }, SECRET, { expiresIn: '30d', issuer: 'discord-clone' })
+  return jwt.sign({ id: user.id }, SECRET, { expiresIn: '30d', issuer: 'discord-clone', audience: 'discord-clients' })
 }
 export function verify(token) {
-  try { return jwt.verify(token, SECRET, { issuer: 'discord-clone' }) } catch { return null }
+  try { return jwt.verify(token, SECRET, { issuer: 'discord-clone', audience: 'discord-clients' }) } catch { return null }
 }
 export function authMiddleware(req, res, next) {
   const payload = verify(req.cookies?.[COOKIE])
