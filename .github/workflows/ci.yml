@@ -24,4 +24,12 @@ jobs:
       - run: node --check server/features.js
       - run: node --check server/permissions.js
       - run: npm run build
-      - run: npm test
+      - run: |
+          npm run start > /tmp/dsh-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID || true' EXIT
+          for i in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:3001/api/health >/dev/null 2>&1; then break; fi
+            sleep 1
+          done
+          npm test
