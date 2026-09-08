@@ -2,10 +2,10 @@ import React, { useEffect, useState } from 'react'
 import { setUI } from '../lib/store.js'
 import { api } from '../lib/api.js'
 import { useStore } from '../lib/util.js'
-import { IconX, IconUser, IconShield, IconBell, IconMic, IconPalette, IconUsers, IconBadge } from './Icons.jsx'
+import { IconX, IconUser, IconGear, IconMic, IconPalette, IconPeople } from './Icons.jsx'
 import './AdvancedSettings.css'
 
-const groups=[['АККАУНТ',[['profile','Мой аккаунт',IconUser],['privacy','Конфиденциальность',IconUsers]]],['ПРИЛОЖЕНИЕ',[['appearance','Внешний вид',IconPalette],['notifications','Уведомления',IconBell],['accessibility','Доступность',IconBadge],['keybinds','Горячие клавиши',IconShield]]],['ГОЛОС И ВИДЕО',[['voice','Голос и видео',IconMic]]],['БЕЗОПАСНОСТЬ',[['security','Безопасность',IconShield]]]]
+const groups=[['АККАУНТ',[['profile','Мой аккаунт',IconUser],['privacy','Конфиденциальность',IconPeople]]],['ПРИЛОЖЕНИЕ',[['appearance','Внешний вид',IconPalette],['notifications','Уведомления',IconGear],['accessibility','Доступность',IconGear],['keybinds','Горячие клавиши',IconGear]]],['ГОЛОС И ВИДЕО',[['voice','Голос и видео',IconMic]]],['БЕЗОПАСНОСТЬ',[['security','Безопасность',IconGear]]]]
 const defaults={theme:'dark',density:'cozy',fontSize:'15',reducedMotion:false,highContrast:false,desktop:true,sounds:true,mentions:true,dms:true,friendRequests:true,ptt:false,echo:true,noise:true}
 function getPrefs(){try{return {...defaults,...JSON.parse(localStorage.getItem('dsh_preferences')||'{}')}}catch{return defaults}}
 function savePrefs(p){localStorage.setItem('dsh_preferences',JSON.stringify(p))}
