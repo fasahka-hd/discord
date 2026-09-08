@@ -4,6 +4,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import cookieParser from 'cookie-parser'
 import { router } from './api.js'
+import { extendedRouter } from './extended.js'
 import { attachWS } from './ws.js'
 
 const app = express()
@@ -19,6 +20,7 @@ app.use((req, res, next) => {
   res.setHeader('X-Frame-Options', 'DENY')
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
   res.setHeader('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=()')
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin')
   if (isProduction) res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
   next()
 })
@@ -52,6 +54,7 @@ app.use('/api', rateLimit(300, 60_000))
 app.use(express.json({ limit: '2mb', strict: true }))
 app.use(cookieParser())
 app.use('/api', router)
+app.use('/api', extendedRouter)
 
 const DIST = path.join(process.cwd(), 'dist')
 if (fs.existsSync(DIST)) {
