@@ -5,10 +5,8 @@ import { setSender, sendToUsers } from './hub.js'
 import { addPresence, removePresence, setStatus, getStatus, presence, voice, voiceJoin, voiceLeave, voiceUpdate, userVoiceChannel } from './state.js'
 import { channelById, canAccess, postSystemMessage } from './api.js'
 
-const conns = new Map()   // ws -> { userId }
-const byUser = new Map()  // userId -> Set<ws>
-
-/* DM call tracking: channelId -> { startedAt, starterId, waiterId, waitTimer } */
+const conns = new Map()
+const byUser = new Map()
 const dmCall = new Map()
 
 function fmtCallDuration(ms) {
@@ -26,38 +24,30 @@ function onVoiceJoinDM(ch, userId) {
   const meta = dmCall.get(ch.id) || {}
   const room = voice.get(ch.id)
   if (room && room.has(other)) {
-    // the other side is here → the call is connected
     if (!meta.startedAt) {
-      meta.startedAt = Date.now()
-      meta.starterId = meta.starterId || meta.waiterId || userId
-      meta.waiterId = null
+      meta.startedAt = Date.now(); meta.starterId = meta.starterId || meta.waiterId || userId; meta.waiterId = null
       if (meta.waitTimer) { clearTimeout(meta.waitTimer); meta.waitTimer = null }
       dmCall.set(ch.id, meta)
       const starter = get('SELECT username FROM users WHERE id = ?', [meta.starterId])
       if (starter) postSystemMessage(ch.id, userId, `📞 **${starter.username}** начал(а) голосовой звонок.`)
     }
   } else {
-    // waiting for the other side to pick up
-    meta.waiterId = userId
-    meta.startedAt = null
-    if (!meta.waitTimer) {
-      meta.waitTimer = setTimeout(() => {
-        meta.waitTimer = null
-        const r = voice.get(ch.id)
-        if (r && r.has(userId) && !r.has(other)) {
-          const caller = get('SELECT username FROM users WHERE id = ?', [userId])
-          const callee = get('SELECT username FROM users WHERE id = ?', [other])
-          if (caller && callee) postSystemMessage(ch.id, userId, `📞 **${caller.username}** позвонил(а), но **${callee.username}** не ответил(а).`)
-        }
-        dmCall.delete(ch.id)
-      }, 30000)
-    }
+    meta.waiterId = userId; meta.startedAt = null
+    if (!meta.waitTimer) meta.waitTimer = setTimeout(() => {
+      meta.waitTimer = null
+      const r = voice.get(ch.id)
+      if (r && r.has(userId) && !r.has(other)) {
+        const caller = get('SELECT username FROM users WHERE id = ?', [userId])
+        const callee = get('SELECT username FROM users WHERE id = ?', [other])
+        if (caller && callee) postSystemMessage(ch.id, userId, `📞 **${caller.username}** позвонил(а), но **${callee.username}** не ответил(а).`)
+      }
+      dmCall.delete(ch.id)
+    }, 30000)
     dmCall.set(ch.id, meta)
   }
 }
 function onVoiceLeaveDM(ch, userId) {
-  const meta = dmCall.get(ch.id)
-  if (!meta) return
+  const meta = dmCall.get(ch.id); if (!meta) return
   if (meta.waitTimer) clearTimeout(meta.waitTimer)
   if (meta.startedAt) {
     const dur = Date.now() - meta.startedAt
@@ -66,11 +56,9 @@ function onVoiceLeaveDM(ch, userId) {
   }
   dmCall.delete(ch.id)
 }
-
 function userConns(userId) { return byUser.get(userId) || new Set() }
 function send(ws, obj) { if (ws.readyState === 1) ws.send(JSON.stringify(obj)) }
 function sendToAll(msg) { sendToUsers(null, msg) }
-
 function audienceOf(ch) {
   if (!ch) return []
   if (ch.guild_id) return all('SELECT user_id FROM guild_members WHERE guild_id = ?', ch.guild_id).map(r => r.user_id)
@@ -78,8 +66,7 @@ function audienceOf(ch) {
 }
 
 export function attachWS(httpServer) {
-  const wss = new WebSocketServer({ server: httpServer, path: '/ws' })
-
+  const wss = new WebSocketServer({ server: httpServer, path: '/ws', maxPayload: 64 * 1024 })
   setSender((userIds, msg) => {
     const data = JSON.stringify(msg)
     if (userIds === null) { for (const ws of conns.keys()) if (ws.readyState === 1) ws.send(data); return }
@@ -90,7 +77,7 @@ export function attachWS(httpServer) {
     const cookies = {}
     for (const part of (req.headers.cookie || '').split(';')) {
       const [k, ...v] = part.trim().split('=')
-      if (k) cookies[k] = decodeURIComponent(v.join('='))
+      if (k) { try { cookies[k] = decodeURIComponent(v.join('=')) } catch { cookies[k] = v.join('=') } }
     }
     const payload = verify(cookies[COOKIE])
     if (!payload) { ws.close(4001, 'unauthorized'); return }
@@ -99,25 +86,27 @@ export function attachWS(httpServer) {
     const restriction = restrictionOf(user)
     if (restriction) { send(ws, { t: 'ACCOUNT_RESTRICTED', d: { action: restriction.action, until: restriction.until || null } }); ws.close(4003, 'restricted'); return }
 
-    conns.set(ws, { userId: user.id })
+    conns.set(ws, { userId: user.id, windowStarted: Date.now(), windowCount: 0 })
     if (!byUser.has(user.id)) byUser.set(user.id, new Set())
     byUser.get(user.id).add(ws)
-
     const wasOffline = !presence.has(user.id)
-    // keep the user's chosen status (dnd/idle) across reconnects; only a fresh
-    // connection marks them online if their stored status is the default
     const chosen = ['online', 'idle', 'dnd', 'invisible'].includes(user.status) ? user.status : 'online'
     addPresence(user.id, wasOffline ? chosen : getStatus(user.id))
     if (wasOffline) sendToAll({ t: 'PRESENCE', d: { user_id: user.id, status: getStatus(user.id) } })
 
     ws.on('message', raw => {
+      const meta = conns.get(ws)
+      if (!meta) return
+      const now = Date.now()
+      if (now - meta.windowStarted >= 10000) { meta.windowStarted = now; meta.windowCount = 0 }
+      if (++meta.windowCount > 120) { send(ws, { t: 'RATE_LIMIT', d: { retry_after: 10 } }); return }
+      if (raw.length > 64 * 1024) { send(ws, { t: 'ERROR', d: { error: 'Сообщение WebSocket слишком большое' } }); return }
       let msg
-      try { msg = JSON.parse(raw) } catch { return }
+      try { msg = JSON.parse(raw) } catch { send(ws, { t: 'ERROR', d: { error: 'Некорректный JSON' } }); return }
       handle(ws, user.id, msg)
     })
     ws.on('close', () => {
-      const meta = conns.get(ws); conns.delete(ws)
-      if (!meta) return
+      const meta = conns.get(ws); conns.delete(ws); if (!meta) return
       userConns(meta.userId).delete(ws)
       const remaining = userConns(meta.userId).size
       const vc = userVoiceChannel(meta.userId)
@@ -136,80 +125,52 @@ function handle(ws, userId, msg) {
   const { op, d = {} } = msg || {}
   switch (op) {
     case 'ping': return send(ws, { t: 'PONG' })
-
     case 'presence': {
       if (!['online', 'idle', 'dnd', 'invisible'].includes(d.status)) return
-      setStatus(userId, d.status)
-      run('UPDATE users SET status = ? WHERE id = ?', [d.status, userId])
-      sendToAll({ t: 'PRESENCE', d: { user_id: userId, status: d.status } })
-      return
+      setStatus(userId, d.status); run('UPDATE users SET status = ? WHERE id = ?', [d.status, userId])
+      sendToAll({ t: 'PRESENCE', d: { user_id: userId, status: d.status } }); return
     }
-
     case 'typing': {
-      const user = get('SELECT * FROM users WHERE id = ?', [userId])
-      const ch = channelById(d.channel_id)
+      const user = get('SELECT * FROM users WHERE id = ?', [userId]); const ch = channelById(d.channel_id)
       if (!ch || !canAccess(user, ch)) return
       const u = { id: user.id, username: user.username, discriminator: user.discriminator, avatar: user.avatar }
-      for (const id of audienceOf(ch)) {
-        if (id === userId) continue
-        for (const c of userConns(id)) send(c, { t: 'TYPING', d: { channel_id: ch.id, user: u, at: Date.now() } })
-      }
+      for (const id of audienceOf(ch)) if (id !== userId) for (const c of userConns(id)) send(c, { t: 'TYPING', d: { channel_id: ch.id, user: u, at: Date.now() } })
       return
     }
-
     case 'voice:join': {
-      const user = get('SELECT * FROM users WHERE id = ?', [userId])
-      const ch = channelById(d.channel_id)
-      if (!ch || !canAccess(user, ch)) return
+      const user = get('SELECT * FROM users WHERE id = ?', [userId]); const ch = channelById(d.channel_id)
+      if (!ch || ch.type !== 'voice' || !canAccess(user, ch)) return
       const oldChId = userVoiceChannel(userId)
       if (oldChId === ch.id) return
-      if (oldChId) {
-        voiceLeave(oldChId, userId)
-        const oldCh = channelById(oldChId)
-        if (oldCh && !oldCh.guild_id) onVoiceLeaveDM(oldCh, userId)
-        broadcastVoice(oldChId)
-      }
-      voiceJoin(ch.id, userId)
-      broadcastVoice(ch.id)
+      if (oldChId) { voiceLeave(oldChId, userId); const oldCh = channelById(oldChId); if (oldCh && !oldCh.guild_id) onVoiceLeaveDM(oldCh, userId); broadcastVoice(oldChId) }
+      voiceJoin(ch.id, userId); broadcastVoice(ch.id)
       if (!ch.guild_id) onVoiceJoinDM(ch, userId)
       const peers = [...(voice.get(ch.id)?.keys() || [])].filter(id => id !== userId)
-      send(ws, { t: 'VOICE_INIT', d: { channel_id: ch.id, peers } })
-      return
+      send(ws, { t: 'VOICE_INIT', d: { channel_id: ch.id, peers } }); return
     }
-
     case 'voice:leave': {
-      const chId = userVoiceChannel(userId)
-      if (!chId) return
-      voiceLeave(chId, userId)
-      const ch = channelById(chId)
-      if (ch && !ch.guild_id) onVoiceLeaveDM(ch, userId)
-      broadcastVoice(chId)
-      send(ws, { t: 'VOICE_INIT', d: { channel_id: null, peers: [] } })
-      return
+      const chId = userVoiceChannel(userId); if (!chId) return
+      voiceLeave(chId, userId); const ch = channelById(chId); if (ch && !ch.guild_id) onVoiceLeaveDM(ch, userId)
+      broadcastVoice(chId); send(ws, { t: 'VOICE_INIT', d: { channel_id: null, peers: [] } }); return
     }
-
     case 'voice:mute': {
-      const ch = userVoiceChannel(userId)
-      if (!ch) return
-      voiceUpdate(ch, userId, { muted: !!d.muted, deafened: !!d.deafened })
-      broadcastVoice(ch)
-      return
+      const ch = userVoiceChannel(userId); if (!ch) return
+      voiceUpdate(ch, userId, { muted: !!d.muted, deafened: !!d.deafened }); broadcastVoice(ch); return
     }
-
-
     case 'voice:signal': {
+      const senderChannelId = userVoiceChannel(userId)
+      const targetChannelId = userVoiceChannel(d.to)
+      if (!senderChannelId || senderChannelId !== targetChannelId) return
+      if (!byUser.has(d.to)) return
+      let dataSize = 0; try { dataSize = JSON.stringify(d.data || {}).length } catch { return }
+      if (dataSize > 256 * 1024) return
       for (const c of userConns(d.to)) send(c, { t: 'VOICE_SIGNAL', d: { from: userId, data: d.data } })
       return
     }
-
-    /* DM call: notify the other participant that someone is ringing them */
     case 'call:ring': {
       const ch = channelById(d.channel_id)
       if (!ch || ch.guild_id || ch.type !== 'dm') return
-      const user = get('SELECT * FROM users WHERE id = ?', [userId])
-      if (!user || !canAccess(user, ch)) return
-      const restriction = restrictionOf(user)
-      if (restriction) return
+      const user = get('SELECT * FROM users WHERE id = ?', [userId]); if (!user || !canAccess(user, ch) || restrictionOf(user)) return
       const other = all('SELECT user_id FROM dm_recipients WHERE channel_id = ? AND user_id != ?', [ch.id, userId]).map(r => r.user_id)[0]
       if (!other) return
       for (const c of userConns(other)) send(c, { t: 'CALL_RING', d: { channel_id: ch.id, from: publicUser(user) } })
