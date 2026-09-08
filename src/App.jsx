@@ -5,7 +5,8 @@ import { connectWS, setRefreshHandler } from './lib/ws.js'
 import { useStore } from './lib/util.js'
 import Auth from './components/Auth.jsx'
 import Layout from './components/Layout.jsx'
-import Settings from './components/Settings.jsx'
+import AdvancedSettings from './components/AdvancedSettings.jsx'
+import ServerSettings from './components/ServerSettings.jsx'
 
 export default function App() {
   const s = useStore()
@@ -43,8 +44,8 @@ export default function App() {
   if (restriction) return <RestrictionScreen r={restriction} />
   if (booting) return <div className="app-loading"><div className="spinner" /></div>
   if (!authed) return <Auth onAuthed={onLoggedIn} />
-  if (s.ui.settingsOpen) return <Settings />
-  return <Layout />
+  if (s.ui.settingsOpen) return <AdvancedSettings />
+  return <><Layout />{s.ui.modal?.type === 'guild-settings' && <ServerSettings guildId={s.ui.modal.guildId} onClose={() => setUI({ modal: null })} />}</>
 }
 
 function RestrictionScreen({ r }) {
