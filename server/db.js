@@ -38,9 +38,9 @@ CREATE TABLE IF NOT EXISTS invites (code TEXT PRIMARY KEY, guild_id TEXT NOT NUL
 CREATE TABLE IF NOT EXISTS guild_bans (guild_id TEXT NOT NULL, user_id TEXT NOT NULL, moderator_id TEXT NOT NULL, reason TEXT, created_at INTEGER NOT NULL, PRIMARY KEY (guild_id, user_id));
 CREATE TABLE IF NOT EXISTS threads (id TEXT PRIMARY KEY, channel_id TEXT NOT NULL, parent_message_id TEXT NOT NULL, name TEXT NOT NULL, archived INTEGER NOT NULL DEFAULT 0, locked INTEGER NOT NULL DEFAULT 0, created_by TEXT NOT NULL, created_at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS attachments (id TEXT PRIMARY KEY, message_id TEXT NOT NULL, filename TEXT NOT NULL, mime_type TEXT NOT NULL, size INTEGER NOT NULL, url TEXT NOT NULL, width INTEGER, height INTEGER, created_at INTEGER NOT NULL);
-CREATE TABLE IF NOT EXISTS user_settings (user_id TEXT PRIMARY KEY, theme TEXT NOT NULL DEFAULT 'dark', density TEXT NOT NULL DEFAULT 'cozy', reduced_motion INTEGER NOT NULL DEFAULT 0, desktop_notifications INTEGER NOT NULL DEFAULT 1, notification_sounds INTEGER NOT NULL DEFAULT 1, message_sounds INTEGER NOT NULL DEFAULT 1, dm_notifications INTEGER NOT NULL DEFAULT 1, mention_notifications INTEGER NOT NULL DEFAULT 1, friend_notifications INTEGER NOT NULL DEFAULT 1, show_activities INTEGER NOT NULL DEFAULT 1, autoplay_gifs INTEGER NOT NULL DEFAULT 1, developer_mode INTEGER NOT NULL DEFAULT 0, input_mode TEXT NOT NULL DEFAULT 'voice_activity');
-CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, created_at INTEGER NOT NULL, last_seen INTEGER NOT NULL, expires_at INTEGER NOT NULL, user_agent TEXT DEFAULT '', ip TEXT DEFAULT '');
-CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id, last_seen);
+CREATE TABLE IF NOT EXISTS user_settings (user_id TEXT PRIMARY KEY, theme TEXT NOT NULL DEFAULT 'dark', density TEXT NOT NULL DEFAULT 'cozy', reduced_motion INTEGER NOT NULL DEFAULT 0, desktop_notifications INTEGER NOT NULL DEFAULT 1, notification_sounds INTEGER NOT NULL DEFAULT 1, message_sounds INTEGER NOT NULL DEFAULT 1, dm_notifications INTEGER NOT NULL DEFAULT 1, mention_notifications INTEGER NOT NULL DEFAULT 1, friend_notifications INTEGER NOT NULL DEFAULT 1, show_activities INTEGER NOT NULL DEFAULT 1, autoplay_gifs INTEGER NOT NULL DEFAULT 1, developer_mode INTEGER NOT NULL DEFAULT 0, input_mode TEXT NOT NULL DEFAULT 'voice_activity', updated_at INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, user_id TEXT NOT NULL, created_at INTEGER NOT NULL, last_seen INTEGER NOT NULL, expires_at INTEGER NOT NULL, user_agent TEXT DEFAULT '', ip TEXT DEFAULT '', revoked INTEGER NOT NULL DEFAULT 0);
+CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id, revoked, last_seen);
 CREATE INDEX IF NOT EXISTS idx_sessions_expiry ON sessions(expires_at);
 `)
 
@@ -54,6 +54,8 @@ safeAlter('ALTER TABLE users ADD COLUMN badges TEXT')
 safeAlter('ALTER TABLE users ADD COLUMN admin INTEGER NOT NULL DEFAULT 0')
 safeAlter('ALTER TABLE users ADD COLUMN suspended_until INTEGER')
 safeAlter('ALTER TABLE users ADD COLUMN banned INTEGER NOT NULL DEFAULT 0')
+safeAlter('ALTER TABLE user_settings ADD COLUMN updated_at INTEGER NOT NULL DEFAULT 0')
+safeAlter('ALTER TABLE sessions ADD COLUMN revoked INTEGER NOT NULL DEFAULT 0')
 
 export const uid = () => randomUUID()
 export const now = () => Date.now()
