@@ -5,6 +5,7 @@ import path from 'node:path'
 import cookieParser from 'cookie-parser'
 import { router } from './api.js'
 import { extendedRouter } from './extended.js'
+import { featuresRouter } from './features.js'
 import { attachWS } from './ws.js'
 
 const app = express()
@@ -55,6 +56,7 @@ app.use(express.json({ limit: '2mb', strict: true }))
 app.use(cookieParser())
 app.use('/api', router)
 app.use('/api', extendedRouter)
+app.use('/api', featuresRouter)
 
 const DIST = path.join(process.cwd(), 'dist')
 if (fs.existsSync(DIST)) {
