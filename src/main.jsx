@@ -2,6 +2,7 @@ import React from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.jsx'
 import './styles.css'
+import './components/ServerSettings.css'
 
 // Discord blocks the native browser context menu — only our custom menus exist.
 // Native menu stays available inside text inputs (copy/paste).
