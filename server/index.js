@@ -19,10 +19,8 @@ const buckets=new Map();function rateLimit(max,windowMs){return(req,res,next)=>{
 setInterval(()=>{const cutoff=Date.now()-15*60_000;for(const[k,b]of buckets)if(b.started<cutoff)buckets.delete(k)},5*60_000).unref()
 app.use('/api/login',rateLimit(10,60_000));app.use('/api/register',rateLimit(5,60_000));app.use('/api',rateLimit(300,60_000));app.use(express.json({limit:'2mb',strict:true}));app.use(cookieParser())
 app.use((req,res,next)=>{const original=res.cookie.bind(res);res.cookie=(name,value,options={})=>original(name,value,{...options,httpOnly:true,sameSite:'lax',secure:isProduction,path:'/'});next()})
-
-// Enforce guild channel permissions before the legacy API handlers run.
 app.use('/api/channels/:id/messages',authMiddleware,(req,res,next)=>{const ch=get('SELECT * FROM channels WHERE id=?',req.params.id);if(!ch)return res.status(404).json({error:'Канал не найден'});if(!ch.guild_id)return next();const permission=req.method==='GET'?'VIEW_CHANNEL':'SEND_MESSAGES';if(!canUseChannel(ch.guild_id,req.user.id,ch.id,permission))return res.status(403).json({error:'Недостаточно прав для этого канала'});next()})
-app.use('/api','api');app.use('/api',extendedRouter);app.use('/api',featuresRouter)
+app.use('/api',router);app.use('/api',extendedRouter);app.use('/api',featuresRouter)
 const DIST=path.join(process.cwd(),'dist');if(fs.existsSync(DIST)){app.use(express.static(DIST,{index:'index.html',maxAge:isProduction?'1h':0}));app.get(/^(?!\/api|\/ws).*/,(_,res)=>res.sendFile(path.join(DIST,'index.html')))}
 app.use((req,res)=>res.status(404).json({error:'Не найдено'}));app.use((err,req,res,next)=>{const status=Number(err.status)||500;if(status>=500)console.error(err);if(res.headersSent)return next(err);res.status(status).json({error:err.expose?err.message:'Ошибка сервера'})})
 attachWS(server);const PORT=Number(process.env.PORT)||3001;server.listen(PORT,()=>console.log(`[dsh] Discord clone ready on port ${PORT}`))
