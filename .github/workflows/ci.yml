@@ -22,4 +22,6 @@ jobs:
       - run: node --check server/db.js
       - run: node --check server/extended.js
       - run: node --check server/features.js
+      - run: node --check server/permissions.js
       - run: npm run build
+      - run: npm test
