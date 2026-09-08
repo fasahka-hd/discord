@@ -22,6 +22,7 @@ app.use((req, res, next) => {
   res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
   res.setHeader('Permissions-Policy', 'camera=(self), microphone=(self), geolocation=()')
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin')
+  if (req.path.startsWith('/api/')) res.setHeader('Cache-Control', 'no-store')
   if (isProduction) res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
   next()
 })
@@ -54,6 +55,21 @@ app.use('/api/register', rateLimit(5, 60_000))
 app.use('/api', rateLimit(300, 60_000))
 app.use(express.json({ limit: '2mb', strict: true }))
 app.use(cookieParser())
+
+// The older route modules pass cookie options inline. Normalize them centrally so
+// authentication cookies are always HttpOnly/SameSite and secure in production.
+app.use((req, res, next) => {
+  const originalCookie = res.cookie.bind(res)
+  res.cookie = (name, value, options = {}) => originalCookie(name, value, {
+    ...options,
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: isProduction,
+    path: '/',
+  })
+  next()
+})
+
 app.use('/api', router)
 app.use('/api', extendedRouter)
 app.use('/api', featuresRouter)
