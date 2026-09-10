@@ -12,10 +12,10 @@ function readLS(k, d) { try { const v = localStorage.getItem(k); return v === nu
 function writeLS(k, v) { try { localStorage.setItem(k, String(v)) } catch {} }
 
 class VoiceManager {
-  pcs = new Map()        // userId -> RTCPeerConnection
-  remote = new Map()     // userId -> { stream, gain|el, analyser, data, level }
-  localStream = null     // raw mic
-  txStream = null        // processed stream (input volume applied) — what peers receive
+  pcs = new Map()        
+  remote = new Map()     
+  localStream = null     
+  txStream = null        
   screenStream = null
   channelId = null
   muted = false
@@ -29,7 +29,7 @@ class VoiceManager {
   pttWasMuted = false
   onerror = null
 
-  /* ---- persisted settings ---- */
+  
   get inputVolume() { const v = Number(readLS('dsh_vol_in', '1')); return Number.isFinite(v) ? v : 1 }
   set inputVolume(v) { writeLS('dsh_vol_in', v); if (this.gainNode) this.gainNode.gain.value = v }
   get outputVolume() { const v = Number(readLS('dsh_vol_out', '1')); return Number.isFinite(v) ? v : 1 }
@@ -59,7 +59,7 @@ class VoiceManager {
     return c
   }
 
-  /* ---- join / leave ---- */
+  
   async join(channelId) {
     if (this.channelId === channelId) return true
     try {
@@ -68,7 +68,7 @@ class VoiceManager {
         this.localStream.getAudioTracks().forEach(t => (t.enabled = !this.muted))
       }
     } catch (e) {
-      // no mic → join listen-only instead of failing the call
+      
       this.muted = true
       this.localStream = null
       this.onerror && this.onerror('Нет доступа к микрофону — вы в режиме «только прослушивание».')
@@ -79,7 +79,7 @@ class VoiceManager {
     this.ensureCtx()
     this.pushLocal()
     wsSend('voice:join', { channel_id: channelId })
-    // sync mute/deafen to the server so it survives channel switches
+    
     wsSend('voice:mute', { muted: this.muted, deafened: this.deafened })
     return true
   }
@@ -89,7 +89,7 @@ class VoiceManager {
     this.destroy()
   }
 
-  /* ---- input processing: raw mic -> gain -> analyser tap -> destination stream ---- */
+  
   buildTxGraph() {
     if (!this.ctx) return
     try {
@@ -101,11 +101,11 @@ class VoiceManager {
       this.analyser.fftSize = 512
       const dest = this.ctx.createMediaStreamDestination()
       src.connect(this.gainNode)
-      this.gainNode.connect(this.analyser)   // tap for speaking detection
-      this.gainNode.connect(dest)            // what peers receive
+      this.gainNode.connect(this.analyser)   
+      this.gainNode.connect(dest)            
       this.txStream = dest.stream
     } catch {
-      this.txStream = this.localStream       // fallback: no processing
+      this.txStream = this.localStream       
     }
   }
 
@@ -121,7 +121,7 @@ class VoiceManager {
     if (!this.speakLoop) this.speakLoop = setInterval(() => this.detectSpeaking(), 150)
   }
 
-  /* ---- peer connections ---- */
+  
   onInit({ channel_id, peers }) {
     if (!channel_id) { this.destroy(); return }
     this.channelId = channel_id
@@ -142,7 +142,7 @@ class VoiceManager {
     const pc = new RTCPeerConnection(RTC_CONFIG)
     this.pcs.set(peerId, pc)
     if (this.txStream) for (const track of this.txStream.getAudioTracks()) pc.addTrack(track, this.txStream)
-    else pc.addTransceiver('audio', { direction: 'recvonly' }) // listen-only: still receive peer audio
+    else pc.addTransceiver('audio', { direction: 'recvonly' }) 
     pc.onicecandidate = e => { if (e.candidate) wsSend('voice:signal', { to: peerId, data: { ice: e.candidate.toJSON ? e.candidate.toJSON() : e.candidate } }) }
     pc.ontrack = e => this.attachRemote(peerId, e.streams[0])
     pc.onconnectionstatechange = () => {
@@ -150,7 +150,7 @@ class VoiceManager {
         setTimeout(() => { if (pc.connectionState === 'disconnected') { pc.close(); this.removePeer(peerId) } }, 3000)
       }
     }
-    // negotiation on both sides: initial connect + mid-call track changes (screen share)
+    
     pc.onnegotiationneeded = async () => {
       try {
         await pc.setLocalDescription(await pc.createOffer())
@@ -161,13 +161,13 @@ class VoiceManager {
 
   async onSignal({ from, data }) {
     if (from === getState().me?.id) return
-    if (!this.channelId) return // not in voice → ignore
+    if (!this.channelId) return 
     let pc = this.pcs.get(from)
     if (!pc) { this.createPC(from); pc = this.pcs.get(from) }
     try {
       if (data.sdp) {
         if (data.sdp.type === 'offer') {
-          // perfect-negotiation-lite: roll back our pending offer, then answer theirs
+          
           if (pc.signalingState === 'have-local-offer') await pc.setLocalDescription({ type: 'rollback' })
           if (pc.signalingState === 'stable') await pc.setRemoteDescription(data.sdp)
           if (pc.signalingState === 'offer-received') {
@@ -211,7 +211,7 @@ class VoiceManager {
       } catch { entry.gain = null; entry.analyser = null }
     }
     if (!entry.gain) {
-      // fallback path through an <audio> element
+      
       const el = document.createElement('audio')
       el.autoplay = true
       el.srcObject = stream
@@ -222,7 +222,7 @@ class VoiceManager {
       entry.el = el
     }
     this.remote.set(uid, entry)
-    // remote screen share (video track in the same connection)
+    
     if (stream.getVideoTracks().length > 0) setState({ screenShare: { userId: uid, stream, mine: false } })
   }
 
@@ -237,9 +237,9 @@ class VoiceManager {
     }
   }
 
-  /* ---- speaking detection (local = my user id, remotes by their id).
-     Level alone flickers (noise floor keeps the ring on after a word), so we use
-     a raw threshold + a short hangover: the ring stays ~450ms past the last sound. ---- */
+  
+
+
   detectSpeaking() {
     const me = getState().me?.id
     const now = {}
@@ -268,8 +268,8 @@ class VoiceManager {
     if (JSON.stringify(prev) !== JSON.stringify(now)) setState({ speaking: now })
   }
 
-  /* ---- mute / deafen (Discord semantics + user expectation:
-         un-muting the mic while deafened lifts the deafen) ---- */
+  
+
   setMuted(muted) {
     if (muted) {
       this.muted = true
@@ -304,7 +304,7 @@ class VoiceManager {
     setState({ voiceLocal: { muted: this.muted, deafened: this.deafened } })
   }
 
-  /* ---- walkie-talkie (PTT, key: V) ---- */
+  
   pttListeners() {
     document.removeEventListener('keydown', this._pttDown)
     document.removeEventListener('keyup', this._pttUp)
@@ -325,7 +325,7 @@ class VoiceManager {
     if (this.pttWasMuted) { this.pttWasMuted = false; this.setMuted(true) }
   }
 
-  /* ---- screen share ---- */
+  
   async shareScreen() {
     if (this.screenStream) return true
     try {
@@ -346,7 +346,14 @@ class VoiceManager {
     const s = this.screenStream
     if (!s) return
     const track = s.getVideoTracks()[0]
-    for (const pc of this.pcs.values()) if (track) { try { pc.removeTrack(track) } catch {} }
+    if (track) {
+      for (const pc of this.pcs.values()) {
+        try {
+          const sender = pc.getSenders().find(x => x.track === track)
+          if (sender) pc.removeTrack(sender)
+        } catch {}
+      }
+    }
     s.getTracks().forEach(t => t.stop())
     this.screenStream = null
     setState({ screenShare: null })

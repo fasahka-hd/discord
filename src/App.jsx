@@ -1,12 +1,36 @@
 import React, { useEffect, useCallback, useState } from 'react'
 import { api } from './lib/api.js'
-import { getState, setState, setUI } from './lib/store.js'
+import { setState, setUI } from './lib/store.js'
 import { connectWS, setRefreshHandler } from './lib/ws.js'
 import { useStore } from './lib/util.js'
 import Auth from './components/Auth.jsx'
 import Layout from './components/Layout.jsx'
 import Settings from './components/Settings.jsx'
 import ServerSettings from './components/ServerSettings.jsx'
+
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props)
+    this.state = { error: null }
+  }
+  static getDerivedStateFromError(error) {
+    return { error }
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="app-loading">
+          <div className="restrict-card">
+            <div className="restrict-title">Что-то пошло не так</div>
+            <div className="restrict-text">Интерфейс столкнулся с ошибкой. Перезагрузите страницу, чтобы продолжить.</div>
+            <button className="btn primary" style={{ marginTop: 18 }} onClick={() => location.reload()}>Перезагрузить</button>
+          </div>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 
 export default function App() {
   const s = useStore()
@@ -27,11 +51,20 @@ export default function App() {
 
   useEffect(() => {
     setRefreshHandler(() => { loadState().catch(() => {}) })
-    api('/me').then(async () => {
+    let alive = true
+    api('/me').then(async (r) => {
+      if (!alive) return
+      if (!r.user) return
       await loadState()
+      if (!alive) return
       connectWS()
       setAuthed(true)
-    }).catch(() => {}).finally(() => setBooting(false))
+    }).catch((e) => {
+      if (e && e.status === 403 && (e.code === 'banned' || e.code === 'suspended')) {
+        setState({ restriction: { action: e.code, until: e.until || null } })
+      }
+    }).finally(() => { if (alive) setBooting(false) })
+    return () => { alive = false }
   }, [loadState])
 
   const onLoggedIn = useCallback(async () => {
@@ -44,8 +77,8 @@ export default function App() {
   if (restriction) return <RestrictionScreen r={restriction} />
   if (booting) return <div className="app-loading"><div className="spinner" /></div>
   if (!authed) return <Auth onAuthed={onLoggedIn} />
-  if (s.ui.settingsOpen) return <Settings />
-  return <><Layout />{s.ui.modal?.type === 'guild-settings' && <ServerSettings guildId={s.ui.modal.guildId} onClose={() => setUI({ modal: null })} />}</>
+  if (s.ui.settingsOpen) return <ErrorBoundary><Settings /></ErrorBoundary>
+  return <ErrorBoundary><Layout />{s.ui.modal?.type === 'guild-settings' && <ServerSettings guildId={s.ui.modal.guildId} onClose={() => setUI({ modal: null })} />}</ErrorBoundary>
 }
 
 function RestrictionScreen({ r }) {

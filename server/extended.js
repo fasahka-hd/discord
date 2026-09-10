@@ -13,7 +13,7 @@ const PERMISSIONS = [
 ]
 const DEFAULT_PERMISSIONS = 'VIEW_CHANNEL,SEND_MESSAGES,ATTACH_FILES,EMBED_LINKS,CONNECT,SPEAK'
 
-function wrap(fn) { return (req,res,next) => { try { return fn(req,res,next) } catch(e) { return next(e) } } }
+function wrap(fn) { return (req,res,next) => { try { const r = fn(req,res,next); if (r && typeof r.catch === 'function') return r.catch(next); return r } catch(e) { return next(e) } } }
 function member(guildId, userId) { return get('SELECT * FROM guild_members WHERE guild_id = ? AND user_id = ?', [guildId,userId]) }
 function role(guildId, userId) { return member(guildId,userId)?.role || null }
 function requireGuild(guildId) {
@@ -34,7 +34,7 @@ function parsePerms(value) {
   return [...new Set(input.map(String).map(x=>x.trim().toUpperCase()).filter(x=>PERMISSIONS.includes(x)))]
 }
 
-/* ---------- blocks ---------- */
+
 extendedRouter.get('/blocks', authMiddleware, wrap((req,res) => {
   const rows = all(`SELECT u.* FROM blocks b JOIN users u ON u.id=b.blocked_user_id WHERE b.user_id=? ORDER BY b.created_at DESC`, req.user.id)
   res.json({ users: rows })
@@ -53,7 +53,7 @@ extendedRouter.delete('/blocks/:userId', authMiddleware, wrap((req,res) => {
   res.json({ok:true})
 }))
 
-/* ---------- full role system ---------- */
+
 extendedRouter.get('/guilds/:id/roles', authMiddleware, wrap((req,res) => {
   requireGuild(req.params.id)
   if (!member(req.params.id,req.user.id)) throw httpError(403,'Нет доступа')
@@ -108,7 +108,7 @@ extendedRouter.delete('/guilds/:id/members/:userId/roles/:roleId', authMiddlewar
   res.json({ok:true})
 }))
 
-/* ---------- channel permissions/settings ---------- */
+
 extendedRouter.get('/channels/:id/permissions', authMiddleware, wrap((req,res) => {
   const ch=get('SELECT * FROM channels WHERE id=?',req.params.id)
   if(!ch||!ch.guild_id||!member(ch.guild_id,req.user.id))throw httpError(404,'Канал не найден')
@@ -145,7 +145,7 @@ extendedRouter.patch('/channels/:id/settings', authMiddleware, wrap((req,res) =>
   res.json({channel:get('SELECT * FROM channels WHERE id=?',ch.id)})
 }))
 
-/* ---------- invites ---------- */
+
 extendedRouter.post('/guilds/:id/invites', authMiddleware, wrap((req,res) => {
   const g=requireGuild(req.params.id)
   if(!member(g.id,req.user.id))throw httpError(403,'Нет доступа')
@@ -165,7 +165,7 @@ extendedRouter.delete('/guilds/:id/invites/:code', authMiddleware, wrap((req,res
   run('DELETE FROM invites WHERE code=? AND guild_id=?',[req.params.code,g.id]);res.json({ok:true})
 }))
 
-/* ---------- bans + audit log ---------- */
+
 extendedRouter.get('/guilds/:id/bans', authMiddleware, wrap((req,res) => {
   const g=requireGuild(req.params.id);requireManager(g.id,req.user.id)
   res.json({bans:all(`SELECT b.*,u.username,u.display_name,u.avatar FROM guild_bans b JOIN users u ON u.id=b.user_id WHERE b.guild_id=? ORDER BY b.created_at DESC`,g.id)})
@@ -190,7 +190,7 @@ extendedRouter.get('/guilds/:id/audit-log', authMiddleware, wrap((req,res) => {
   res.json({entries:rows.map(x=>({...x,metadata:x.metadata?JSON.parse(x.metadata):{}}))})
 }))
 
-/* ---------- account settings ---------- */
+
 extendedRouter.get('/settings', authMiddleware, wrap((req,res) => {
   let s=get('SELECT * FROM user_settings WHERE user_id=?',req.user.id)
   if(!s){run('INSERT INTO user_settings (user_id) VALUES (?)',req.user.id);s=get('SELECT * FROM user_settings WHERE user_id=?',req.user.id)}

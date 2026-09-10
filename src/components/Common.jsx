@@ -3,14 +3,14 @@ import { createPortal } from 'react-dom'
 import { getState, setUI } from '../lib/store.js'
 import { avatarColor, initials, useStore } from '../lib/util.js'
 
-/* last pointer position — used to anchor popovers (profile card) like Discord does */
+
 let _ptr = { x: 0, y: 0 }
 if (typeof document !== 'undefined') {
   document.addEventListener('pointerdown', e => { _ptr = { x: e.clientX, y: e.clientY } })
 }
 export function lastPointer() { return _ptr }
 
-/* ---------- Avatar ---------- */
+
 export function Avatar({ user, size = 40, showStatus = false, status, speaking = false, square = false, onClick }) {
   const s = useStore()
   const st = status || (user && s.presences[user.id]) || 'offline'
@@ -24,14 +24,14 @@ export function Avatar({ user, size = 40, showStatus = false, status, speaking =
   )
 }
 
-/* ---------- Tooltip ---------- */
+
 export function Tooltip({ tip, children, side = 'right', multiline = false }) {
   const [pos, setPos] = useState(null)
   const ref = useRef(null)
   const show = () => {
     if (!tip || !ref.current) return
-    // the wrapper is display:contents (no layout box) — measure the first real child,
-    // otherwise getBoundingClientRect() can return zeros and the tip lands "somewhere"
+    
+    
     const el = ref.current.firstElementChild || ref.current
     const r = el.getBoundingClientRect()
     if (!r.width && !r.height) return
@@ -51,7 +51,7 @@ export function Tooltip({ tip, children, side = 'right', multiline = false }) {
   )
 }
 
-/* ---------- Context menu ---------- */
+
 export function openMenu(e, items) {
   e.preventDefault()
   e.stopPropagation()
@@ -80,7 +80,7 @@ export function ContextMenuHost() {
     </>, document.body)
 }
 
-/* ---------- Modal shell ---------- */
+
 export function Modal({ onClose, children, width = 440, bare = false, compact = false, className = '' }) {
   return createPortal(
     <div className="modal-backdrop" onMouseDown={e => { if (e.target === e.currentTarget) onClose() }}>
@@ -91,7 +91,7 @@ export function Modal({ onClose, children, width = 440, bare = false, compact = 
     </div>, document.body)
 }
 
-/* ---------- Confirm ---------- */
+
 export function confirmDialog({ title, body, danger = true, okLabel = 'Подтвердить', onOk }) {
   setUI({
     modal: {

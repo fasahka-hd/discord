@@ -79,10 +79,10 @@ export default function Chat() {
   )
 }
 
-/* ================= DM right-side profile (как в Discord) ================= */
+
 function DmProfile({ other, channelId }) {
   const s = useStore()
-  // presence lives in the live map only — falling back to other.status showed everyone as online
+  
   const pres = s.presences[other.id] || 'offline'
   const presText = { online: 'В сети', idle: 'Не активен', dnd: 'Не беспокоить', invisible: 'Не в сети', offline: 'Не в сети' }[pres]
   const presColor = { online: 'var(--online)', idle: 'var(--idle)', dnd: 'var(--dnd)', invisible: 'var(--offline)', offline: 'var(--offline)' }[pres]
@@ -118,7 +118,7 @@ function DmProfile({ other, channelId }) {
   )
 }
 
-/* ================= DM call card (Discord-style плашка) ================= */
+
 function CallBar({ ch, other }) {
   const s = useStore()
   const me = s.users[s.me.id] || s.me
@@ -195,7 +195,7 @@ function cvDur(ms) {
   return h ? `${h}:${pad(m % 60)}:${pad(sec % 60)}` : `${m}:${pad(sec % 60)}`
 }
 
-/* ================= message list ================= */
+
 function MessageList({ ch }) {
   const s = useStore()
   const data = s.messages[ch.id]
@@ -253,7 +253,7 @@ function MessageList({ ch }) {
         const prev = list[i - 1]
         const grouped = prev && prev.author_id === m.author_id && m.created_at - prev.created_at < 5 * 60e3 && !m.reply_to && !prev.reply_to
         const showDate = !prev || new Date(prev.created_at).toDateString() !== new Date(m.created_at).toDateString()
-        // system messages (call logs etc.) — centered, no avatar/actions
+        
         if ((m.content || '').startsWith('[SYS]')) {
           return (
             <React.Fragment key={m.id}>
@@ -307,7 +307,7 @@ function ChannelWelcome({ ch }) {
   )
 }
 
-/* ================= single message ================= */
+
 function Message({ m, ch, grouped, me, mentionNames }) {
   const s = useStore()
   const author = s.users[m.author_id] || { id: m.author_id, username: '???' }
@@ -443,10 +443,10 @@ function Reactions({ m, ch, me }) {
   )
 }
 
-/* ================= rich content ================= */
+
 export function Rich({ content, mentionNames, me }) {
   const parts = []
-  // split code blocks first
+  
   const blocks = content.split(/```/)
   blocks.forEach((b, bi) => {
     if (bi % 2 === 1) {
@@ -480,7 +480,7 @@ export function Rich({ content, mentionNames, me }) {
   return <>{parts}</>
 }
 
-/* ================= composer ================= */
+
 function Composer({ ch }) {
   const s = useStore()
   const [text, setText] = useState('')
@@ -509,7 +509,7 @@ function Composer({ ch }) {
     setText(''); setFiles([]); resize(); setUI({ replyTo: null })
     try {
       const r = await api(`/channels/${ch.id}/messages`, { body: payload })
-      // echo guard: server broadcasts to audience incl. self
+      
       const st = getState()
       if (!st.messages[ch.id]?.list.some(m => m.id === r.message.id)) upsertMessage(r.message)
     } catch (e) { alert(e.message); setText(content) }
@@ -555,7 +555,7 @@ function Composer({ ch }) {
     taRef.current?.focus()
   }
 
-  // up to 4 attachments per message; accept a FileList/File[] (picker, drag-drop, paste)
+  
   const addFiles = arr => {
     for (const f of [...arr]) {
       if (!f || f.size > 2 * 1024 * 1024) { if (f) alert(`Файл ${f.name} больше 2 МБ`); continue }
@@ -657,7 +657,7 @@ function Composer({ ch }) {
   )
 }
 
-/* ================= members ================= */
+
 function Members({ guild }) {
   const s = useStore()
   if (!guild) return null
@@ -719,7 +719,7 @@ function memberMenu(m, guild, s) {
   return items
 }
 
-/* ================= search ================= */
+
 function SearchBox({ channelId }) {
   const [q, setQ] = useState('')
   const [res, setRes] = useState(null)

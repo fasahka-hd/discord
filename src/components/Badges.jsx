@@ -6,12 +6,12 @@ import { Modal, Tooltip, Avatar, confirmDialog } from './Common.jsx'
 import { IconBadge } from './Icons.jsx'
 import { BADGES, BADGE_CATEGORIES, BADGE_BY_ID, permsOf } from '../../shared/badges.js'
 
-/* tooltip body for a badge: name + description (как было) */
+
 function badgeTip(b) {
   return <span><b>{b.name}</b><br />{b.desc}</span>
 }
 
-/* Row of profile badges (Discord-style) for a user's badge id list. */
+
 export function UserBadges({ ids, size = 18, className = '' }) {
   if (!ids || !ids.length) return null
   return (
@@ -29,7 +29,7 @@ export function UserBadges({ ids, size = 18, className = '' }) {
   )
 }
 
-/* Toggleable catalog grid, grouped by category. */
+
 export function BadgeGrid({ selected, onToggle }) {
   const sel = new Set(selected || [])
   return (
@@ -57,7 +57,7 @@ export function BadgeGrid({ selected, onToggle }) {
   )
 }
 
-/* my effective moderation permissions (platform admin or badge-granted) */
+
 export function myModPerms(me) {
   if (!me) return new Set()
   if (me.is_admin) return new Set(['suspend', 'ban', 'delete_any_message', 'grant_badges'])
@@ -69,7 +69,7 @@ async function saveBadges(userId, ids) {
   return r.user
 }
 
-/* Modal opened from a user's profile card (admin only). */
+
 export function BadgeEditorModal({ userId, onClose }) {
   const s = useStore()
   const user = s.users[userId] || getState().me
@@ -86,7 +86,7 @@ export function BadgeEditorModal({ userId, onClose }) {
       await saveBadges(userId, ids)
       setMsg('✓ Сохранено')
       setTimeout(() => {
-        // return to the profile card if the editor is still the open modal
+        
         if (getState().ui.modal?.type === 'badge-editor' && getState().ui.modal.userId === userId)
           setUI({ modal: { type: 'profile', userId } })
       }, 600)
@@ -113,7 +113,7 @@ export function BadgeEditorModal({ userId, onClose }) {
   )
 }
 
-/* Settings → «Выдача бейджей» tab (admin only): pick a user, toggle badges, moderate account. */
+
 export function AdminBadgesTab() {
   const s = useStore()
   const [users, setUsers] = useState(null)
@@ -127,7 +127,7 @@ export function AdminBadgesTab() {
     if (!selId && r.users.length) setSelId(r.users[0].id)
   }).catch(e => setMsg('⚠ ' + e.message))
   useEffect(() => { load() }, [q])
-  // keep the editor in sync with the store (live USER_UPDATE broadcasts)
+  
   const selUser = selId ? (s.users[selId] || users?.find(u => u.id === selId)) : null
   useEffect(() => { if (selUser) setIds([...(selUser.badges || [])]) }, [selId, selUser?.badges?.join(',')])
   const filtered = useMemo(() => users || [], [users])

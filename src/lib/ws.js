@@ -10,7 +10,7 @@ export function connectWS() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws'
   ws = new WebSocket(`${proto}://${location.host}/ws`)
   ws.onopen = () => {
-    // resync after a reconnect so nothing gets missed while offline
+    
     if (everConnected && refreshHandler) refreshHandler()
     everConnected = true
   }
@@ -48,7 +48,7 @@ function dispatch(msg) {
     case 'MESSAGE_CREATE': {
       mergeUsers([{ id: d.message.author_id }])
       upsertMessage(d.message)
-      // update last_message in dm/guild channel list
+      
       const ui = getState().ui
       const viewing = ui.channelId === d.channel_id && document.visibilityState === 'visible'
       if (viewing) {
@@ -104,9 +104,27 @@ function dispatch(msg) {
       break
     }
     case 'GUILD_UPDATE': {
+      if (!d.guild || !d.guild.id) {
+        if (refreshHandler) refreshHandler()
+        break
+      }
       const guilds = getState().guilds
       const idx = guilds.findIndex(g => g.id === d.guild.id)
-      const next = idx >= 0 ? guilds.map((g, i) => i === idx ? d.guild : g) : [...guilds, d.guild]
+      const prev = idx >= 0 ? guilds[idx] : null
+      let incoming = d.guild
+      if (prev) {
+        const oldCh = new Map((prev.channels || []).map(c => [c.id, c]))
+        incoming = {
+          ...prev,
+          ...d.guild,
+          my_role: d.guild.my_role ?? prev.my_role,
+          channels: (d.guild.channels || []).map(c => {
+            const o = oldCh.get(c.id)
+            return o ? { ...c, unread: c.unread ?? o.unread, last_message: c.last_message ?? o.last_message } : c
+          }),
+        }
+      }
+      const next = idx >= 0 ? guilds.map((g, i) => i === idx ? incoming : g) : [...guilds, incoming]
       setState({ guilds: next })
       break
     }
@@ -136,7 +154,7 @@ function dispatch(msg) {
       break
 
     case 'CALL_RING':
-      // don't ring if we're already in that call
+      
       if (getState().ui.channelId !== d.channel_id || !voice.channelId) setState({ incomingCall: d })
       break
 
@@ -166,7 +184,7 @@ function touchLastMessage(channelId, message, incUnread) {
   setState({ guilds })
 }
 
-// periodic typing cleanup
+
 setInterval(() => {
   const s = getState()
   const now = Date.now()

@@ -1,6 +1,6 @@
-// Каталог бейджей профиля Discord — единственный источник правды для сервера и клиента.
-// Иконки — настоящие ассеты Discord, скачанные в public/badges/ (репозиторий mezotv/discord-badges, MIT).
-// id стабильны: они хранятся в БД (users.badges), менять нельзя — только добавлять новые.
+
+
+
 
 export const BADGE_CATEGORIES = [
   { id: 'general', title: 'Основные' },
@@ -18,7 +18,7 @@ export const BADGE_CATEGORIES = [
 const B = (id, name, desc, icon, cat) => ({ id, name, desc, icon, cat })
 
 export const BADGES = [
-  /* ---------- Основные ---------- */
+  
   B('staff', 'Сотрудник Discord', 'Выдаётся сотрудникам Discord (модераторам и персоналу).', '/badges/discord-staff.svg', 'general'),
   B('partner', 'Партнёр Discord', 'Для серверов-партнёров Discord.', '/badges/discord-partner.svg', 'general'),
   B('bug_hunter_1', 'Охотник за багами', 'Нашёл и сообщил о баге в программе Bug Bounty.', '/badges/discord-bug-hunter-green.svg', 'general'),
@@ -33,13 +33,13 @@ export const BADGES = [
   B('legacy_username', 'Изначально известен как', 'Аккаунт со старым уникальным тегом (#0001—#9999).', '/badges/username.png', 'general'),
   B('quest', 'Прошёл квест', 'Завершил квест из вкладки подарков.', '/badges/quest.png', 'general'),
 
-  /* ---------- Модерация и разработка ---------- */
+  
   B('certified_moderator', 'Сертифицированный модератор', 'Прошел экзамен Discord Certified Moderator.', '/badges/old-discord-mod.svg', 'staff'),
   B('mod_alumni', 'Moderator Programs Alumni', 'Ветеран программ модерации Discord.', '/badges/discord-mod.svg', 'staff'),
   B('verified_dev', 'Верифицированный разработчик', 'Ранний верифицированный разработчик ботов.', '/badges/discord-bot-dev.svg', 'staff'),
   B('active_dev', 'Активный разработчик', 'Разработчик, чей бот активно используется сообществом.', '/badges/active-developer.svg', 'staff'),
 
-  /* ---------- Боты и приложения ---------- */
+  
   B('verified_bot', 'Верифицированный бот', 'Бот, прошедший верификацию Discord.', '/badges/special/verified-bot.svg', 'bot'),
   B('verified_app', 'Верифицированное приложение', 'Приложение, прошедшее верификацию Discord.', '/badges/special/verified-app.svg', 'bot'),
   B('bot_tag', 'Бот', 'Учётная запись бота.', '/badges/special/bot.svg', 'bot'),
@@ -54,11 +54,11 @@ export const BADGES = [
   B('new_here', 'Я здесь новый', 'Новичок на сервере.', '/badges/special/new-here.svg', 'bot'),
   B('server_member', 'Участник сервера', 'Значок участия в сервере.', '/badges/special/server.svg', 'bot'),
 
-  /* ---------- Буст-уровни ---------- */
+  
   ...[1, 2, 3, 4, 5, 6, 7, 8, 9].map(n =>
     B(`boost_${n}`, `Буст-уровень ${n}`, `Достигнут ${n}-й уровень буста сервера.`, `/badges/boosts/discord-boost-${n}.svg`, 'boost')),
 
-  /* ---------- Щедрость ---------- */
+  
   B('gift_patron', 'Меценат', 'Дарил много подписок Nitro.', '/badges/gifting/patron.png', 'gifting'),
   B('gift_champion', 'Чемпион', 'Дарил подписки и бусты друзьям.', '/badges/gifting/champion.png', 'gifting'),
   B('gift_luminary', 'Светило', 'Выдающийся даритель.', '/badges/gifting/luminary.png', 'gifting'),
@@ -66,7 +66,7 @@ export const BADGES = [
   B('gift_hero', 'Герой', 'Помогал друзьям подписками.', '/badges/gifting/hero.png', 'gifting'),
   B('gift_legend', 'Легенда', 'Максимальный уровень щедрости.', '/badges/gifting/legend.png', 'gifting'),
 
-  /* ---------- Возраст аккаунта ---------- */
+  
   B('age_seed', 'Семя', 'Аккаунту больше 6 месяцев.', '/badges/account-age/seed.svg', 'age'),
   B('age_sprout', 'Росток', 'Аккаунту больше года.', '/badges/account-age/sprout.svg', 'age'),
   B('age_sapling', 'Саженец', 'Аккаунту больше 2 лет.', '/badges/account-age/sapling.svg', 'age'),
@@ -78,7 +78,7 @@ export const BADGES = [
   B('age_bristlecone', 'Сосна остистая', 'Аккаунту больше 8 лет.', '/badges/account-age/bristlecone.svg', 'age'),
   B('age_primordial', 'Первозданный', 'Аккаунту больше 9 лет — ровесник Discord.', '/badges/account-age/primordial.svg', 'age'),
 
-  /* ---------- Стримы ---------- */
+  
   B('stream_newcomer', 'Новичок-стример', 'Начал стримить на Discord.', '/badges/streaming/newcomer.svg', 'streaming'),
   B('stream_fledgling', 'Неопытный стример', 'Провёл первые стримы.', '/badges/streaming/fledgling.svg', 'streaming'),
   B('stream_breakout', 'Прорыв', 'Набрал первую аудиторию на стримах.', '/badges/streaming/breakout.svg', 'streaming'),
@@ -90,7 +90,7 @@ export const BADGES = [
   B('stream_visionary', 'Визионер', 'Новатор среди стримеров.', '/badges/streaming/visionary.svg', 'streaming'),
   B('stream_phenomenon', 'Феномен', 'Максимальный уровень стримера.', '/badges/streaming/phenomenon.svg', 'streaming'),
 
-  /* ---------- Часов в играх ---------- */
+  
   B('gt_casual', 'Любитель игр', 'Немного времени в играх.', '/badges/game-time/casual.svg', 'gametime'),
   B('gt_recreational', 'Рекреационный игрок', 'Регулярно играет.', '/badges/game-time/recreational.svg', 'gametime'),
   B('gt_dedicated', 'Преданный игрок', 'Много времени в играх.', '/badges/game-time/dedicated.svg', 'gametime'),
@@ -102,7 +102,7 @@ export const BADGES = [
   B('gt_unshakeable', 'Непоколебимый', 'Почти топ по наигранному.', '/badges/game-time/unshakeable.svg', 'gametime'),
   B('gt_eternal', 'Вечный игрок', 'Максимальный уровень игрового времени.', '/badges/game-time/eternal.svg', 'gametime'),
 
-  /* ---------- Разнообразие игр ---------- */
+  
   B('gv_dabbler', 'Пробователь', 'Попробовал несколько игр.', '/badges/game-variety/dabbler.svg', 'variety'),
   B('gv_sampler', 'Дегустатор', 'Пробует разные игры.', '/badges/game-variety/sampler.svg', 'variety'),
   B('gv_explorer', 'Исследователь', 'Исследует игровые жанры.', '/badges/game-variety/explorer.svg', 'variety'),
@@ -114,7 +114,7 @@ export const BADGES = [
   B('gv_voyager', 'Путешественник', 'Путешествует по игровым мирам.', '/badges/game-variety/voyager.svg', 'variety'),
   B('gv_universalist', 'Универсалист', 'Максимальный уровень разнообразия игр.', '/badges/game-variety/universalist.svg', 'variety'),
 
-  /* ---------- Уровни подписки ---------- */
+  
   B('sub_bronze', 'Подписка: Бронза', '1 месяц подписки.', '/badges/subscriptions/badges/bronze.png', 'subscription'),
   B('sub_silver', 'Подписка: Серебро', '3 месяца подписки.', '/badges/subscriptions/badges/silver.png', 'subscription'),
   B('sub_gold', 'Подписка: Золото', '6 месяцев подписки.', '/badges/subscriptions/badges/gold.png', 'subscription'),
@@ -128,7 +128,7 @@ export const BADGES = [
 export const BADGE_IDS = new Set(BADGES.map(b => b.id))
 export const BADGE_BY_ID = Object.fromEntries(BADGES.map(b => [b.id, b]))
 
-/* ---- права, которые даёт значок (как в Discord: сотрудник/модератор могут модерировать платформу) ---- */
+
 export const BADGE_PERMS = {
   staff: ['suspend', 'ban', 'delete_any_message'],
   certified_moderator: ['suspend', 'delete_any_message'],
@@ -145,7 +145,7 @@ export function permsOf(badges = []) {
   return [...out]
 }
 
-/* ---- в чатах (сообщения, участники) показываем только служебные значки:
-   Сотрудник, боты/приложения и «Я здесь новый». Остальные — только в профиле. ---- */
+
+
 export const CHAT_BADGE_IDS = new Set(['staff', 'bot_tag', 'verified_bot', 'app_tag', 'verified_app', 'system', 'official', 'new_here'])
 export function chatBadges(ids = []) { return ids.filter(id => CHAT_BADGE_IDS.has(id)) }

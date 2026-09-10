@@ -6,7 +6,7 @@ import { wsSend } from '../lib/ws.js'
 import { useStore } from '../lib/util.js'
 import { Modal, Avatar, confirmDialog, openMenu, lastPointer, Tooltip } from './Common.jsx'
 import { UserBadges, BadgeEditorModal, myModPerms } from './Badges.jsx'
-import { IconX, IconCopy, IconCheck, IconUserAdd, IconMessage, IconTrash, IconGear, IconMore, IconUsers, IconCrown, IconShield, IconHash, IconSpeaker, IconPlus, IconBadge, IconChevronDown } from './Icons.jsx'
+import { IconX, IconCopy, IconCheck, IconUserAdd, IconMessage, IconGear, IconMore, IconUsers, IconCrown, IconShield, IconBadge, IconChevronDown } from './Icons.jsx'
 import { EMOJI_GROUPS } from './EmojiPicker.jsx'
 import { avatarColor } from '../lib/util.js'
 
@@ -19,7 +19,6 @@ export default function Modals() {
     case 'create-guild': return <CreateGuildModal onClose={close} />
     case 'join-guild': return <JoinGuildModal onClose={close} />
     case 'invite': return <InviteModal guildId={m.guildId} onClose={close} />
-    case 'guild-settings': return <GuildSettingsModal guildId={m.guildId} onClose={close} />
     case 'create-channel': return <ChannelModal guildId={m.guildId} type0={m.channelType || 'text'} onClose={close} />
     case 'edit-channel': return <ChannelModal channelId={m.channelId} onClose={close} />
     case 'profile': return <ProfileModal userId={m.userId} abovePanel={m.abovePanel} onClose={close} />
@@ -50,7 +49,7 @@ function CreateGuildModal({ onClose }) {
     try {
       const r = await api('/guilds', { body: { name } })
       const g = r.guild
-      upsertGuild(g) // optimistic — server also pushes GUILD_UPDATE
+      upsertGuild(g) 
       const firstText = g.channels.find(c => c.type === 'text')
       setUI({ modal: null, guildId: g.id, channelId: firstText ? firstText.id : null })
     } catch (e) { setErr(e.message) }
@@ -117,130 +116,6 @@ function InviteModal({ guildId, onClose }) {
       <div className="modal-footer">
         <button className="btn ghost" onClick={onClose}>Готово</button>
       </div>
-    </Modal>
-  )
-}
-
-function GuildSettingsModal({ guildId, onClose }) {
-  const s = useStore()
-  const g = s.guilds.find(x => x.id === guildId)
-  const [tab, setTab] = useState('general')
-  const [name, setName] = useState(g?.name || '')
-  const [color, setColor] = useState(g?.icon_color || '#5865f2')
-  const [copied, setCopied] = useState(false)
-  const [err, setErr] = useState('')
-  if (!g) return null
-  const myRole = g.members.find(m => m.user_id === s.me.id)?.role
-  const isOwner = myRole === 'owner'
-  const isMod = isOwner || myRole === 'admin'
-  const saveGeneral = async () => {
-    try { await api(`/guilds/${g.id}`, { method: 'PATCH', body: { name, icon_color: color } }); onClose() } catch (e) { setErr(e.message) }
-  }
-  const copyInvite = () => { navigator.clipboard?.writeText(g.invite_code).catch(() => {}); setCopied(true); setTimeout(() => setCopied(false), 2000) }
-  const resetInvite = async () => { try { await api(`/guilds/${g.id}`, { method: 'PATCH', body: { reset_invite: true } }) } catch (e) { setErr(e.message) } }
-  const setRole = (m, role) => api(`/guilds/${g.id}/members/${m.user_id}/role`, { body: { role } }).catch(e => alert(e.message))
-  const kick = u => confirmDialog({ title: `Выгнать ${u.username} с сервера?`, okLabel: 'Выгнать', onOk: () => api(`/guilds/${g.id}/members/${u.id}`, { method: 'DELETE' }).catch(e => alert(e.message)) })
-  const deleteGuild = () => confirmDialog({ title: 'Удалить сервер?', body: `«${g.name}» будет удалён безвозвратно вместе со всеми каналами и сообщениями.`, okLabel: 'Удалить сервер', onOk: async () => { try { await api(`/guilds/${g.id}`, { method: 'DELETE' }); setUI({ modal: null, guildId: '@home', channelId: null }) } catch (e) { alert(e.message) } } })
-  const canManage = m => isOwner && m.user_id !== g.owner_id
-  return (
-    <Modal onClose={onClose} width={640} className="gs-wide">
-      <h2 style={{ marginBottom: 0 }}>Настройки сервера</h2>
-      <p className="m-sub">{g.name}</p>
-      <div className="gs-tabs">
-        <button className={tab === 'general' ? 'active' : ''} onClick={() => setTab('general')}>Общие</button>
-        {isMod && <button className={tab === 'members' ? 'active' : ''} onClick={() => setTab('members')}>Участники</button>}
-        {isMod && <button className={tab === 'channels' ? 'active' : ''} onClick={() => setTab('channels')}>Каналы</button>}
-        {isOwner && <button className={`danger ${tab === 'danger' ? 'active' : ''}`} onClick={() => setTab('danger')}>Опасная зона</button>}
-      </div>
-      {tab === 'general' && (
-        <div className="gs-body">
-          {!isMod && <div className="gs-readonly">Вы — участник этого сервера. Изменять настройки могут только владелец и администраторы, поэтому поля ниже доступны только для просмотра.</div>}
-          <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 16 }}>
-            <div className="server-pill" style={{ background: color, width: 64, height: 64, borderRadius: 16, fontSize: 20, flexShrink: 0 }}>{abbrName(name || g.name)}</div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="field-label" style={{ marginTop: 0 }}>Название</div>
-              <input className="field-input" value={name} disabled={!isMod} onChange={e => setName(e.target.value)} />
-            </div>
-          </div>
-          <div className="field-label">Цвет иконки</div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-            {['#5865f2', '#3ba55c', '#faa61a', '#ed4245', '#eb459e', '#9b59b6', '#3498db', '#1abc9c'].map(c => (
-              <button key={c} disabled={!isMod} onClick={() => setColor(c)} style={{ width: 28, height: 28, borderRadius: '50%', background: c, border: color === c ? '3px solid #fff' : '3px solid transparent', cursor: isMod ? 'pointer' : 'default', opacity: isMod ? 1 : 0.5 }} />
-            ))}
-          </div>
-          <div className="field-label">Код приглашения</div>
-          <div className="invite-box" style={{ marginBottom: 8 }}>
-            <code>{g.invite_code}</code>
-            <button className="btn primary" title="Скопировать" onClick={copyInvite}>{copied ? <IconCheck size={18} /> : <IconCopy size={18} />}</button>
-            {isMod && <button className="btn ghost" title="Сгенерировать новый код" onClick={resetInvite}>Сбросить</button>}
-          </div>
-          {err && <div className="auth-error">{err}</div>}
-          <div className="modal-footer">
-            <button className="btn ghost" onClick={onClose}>Закрыть</button>
-            {isMod && <button className="btn primary" onClick={saveGeneral}>Сохранить</button>}
-          </div>
-        </div>
-      )}
-      {tab === 'members' && (
-        <div className="gs-body">
-          <div className="gs-hint">Владелец может менять роли и выгонять участников. Роль владельца изменить нельзя.</div>
-          {g.members.map(m => {
-            const u = s.users[m.user_id]
-            if (!u) return null
-            return (
-              <div key={m.user_id} className="gs-member">
-                <Avatar user={u} size={36} showStatus />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 600, color: 'var(--text-header)', display: 'flex', alignItems: 'center', gap: 4 }}>
-                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{displayName(u)}</span>
-                    {m.role === 'owner' && <IconCrown size={15} style={{ color: '#f0b232', flexShrink: 0 }} />}
-                    {m.role === 'admin' && <IconShield size={13} style={{ color: '#8790d8', flexShrink: 0 }} />}
-                  </div>
-                  <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>@{u.username}</div>
-                </div>
-                <select className="sr-input gs-role" value={m.role} disabled={!canManage(m)} onChange={e => setRole(m, e.target.value)}>
-                  {m.role === 'owner'
-                    ? <option value="owner">Владелец</option>
-                    : <><option value="member">Участник</option><option value="admin">Администратор</option></>}
-                </select>
-                {isMod && m.user_id !== g.owner_id && (
-                  <button className="icon-btn" title="Выгнать с сервера" style={{ color: 'var(--red)' }} onClick={() => kick(u)}><IconTrash size={18} /></button>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      )}
-      {tab === 'channels' && (
-        <div className="gs-body">
-          {g.channels.map(c => (
-            <div key={c.id} className="gs-member">
-              {c.type === 'voice' ? <IconSpeaker size={20} style={{ color: 'var(--text-faint)', flexShrink: 0 }} /> : <IconHash size={20} style={{ color: 'var(--text-faint)', flexShrink: 0 }} />}
-              <div style={{ flex: 1, minWidth: 0, fontWeight: 500 }}>
-                {c.name}
-                {c.topic && <div style={{ fontSize: 12, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.topic}</div>}
-              </div>
-              <button className="icon-btn" title="Изменить канал" onClick={() => setUI({ modal: { type: 'edit-channel', channelId: c.id } })}><IconGear size={18} /></button>
-              <button className="icon-btn" title="Удалить канал" style={{ color: 'var(--red)' }}
-                onClick={() => confirmDialog({ title: `Удалить канал «${c.name}»?`, body: 'Удаление канала необратимо.', okLabel: 'Удалить канал', onOk: () => api(`/channels/${c.id}`, { method: 'DELETE' }).catch(e => alert(e.message)) })}>
-                <IconTrash size={18} />
-              </button>
-            </div>
-          ))}
-          <button className="btn primary" style={{ marginTop: 12 }} onClick={() => setUI({ modal: { type: 'create-channel', guildId: g.id } })}>
-            <IconPlus size={15} style={{ verticalAlign: -2 }} /> Создать канал
-          </button>
-        </div>
-      )}
-      {tab === 'danger' && (
-        <div className="gs-body">
-          <div className="gs-danger">
-            <div style={{ fontWeight: 700, color: 'var(--text-header)' }}>Удалить сервер</div>
-            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 4 }}>Сервер «{g.name}» будет удалён безвозвратно вместе со всеми каналами и сообщениями.</div>
-            <button className="btn red" style={{ marginTop: 12 }} onClick={deleteGuild}><IconTrash size={15} style={{ verticalAlign: -2 }} /> Удалить сервер</button>
-          </div>
-        </div>
-      )}
     </Modal>
   )
 }
@@ -322,8 +197,8 @@ function ProfileModal({ userId, abovePanel = false, onClose }) {
   const [prof, setProf] = useState(null)
   const [note, setNote] = useState('')
   const [err, setErr] = useState('')
-  // capture the anchor ONCE when the modal opens — re-reading lastPointer()
-  // on every render makes the window jump when tabs are clicked (pointerdown updates it)
+  
+  
   const [anchor] = useState(() => lastPointer())
   const load = () => api(`/users/${userId}`).then(r => { setProf(r); setNote(r.note || '') }).catch(e => setErr(e.message))
   useEffect(() => { load() }, [userId])
@@ -337,7 +212,7 @@ function ProfileModal({ userId, abovePanel = false, onClose }) {
   const presColor = { online: 'var(--online)', idle: 'var(--idle)', dnd: 'var(--dnd)', invisible: 'var(--offline)', offline: 'var(--offline)' }[pres]
   const roleLabel = r => r === 'owner' ? 'Владелец' : r === 'admin' ? 'Администратор' : 'Участник'
   const fmtD = ts => ts ? new Date(ts).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' }) : ''
-  // moderation rights: platform admin or badge-granted (staff / certified_moderator)
+  
   const perms = myModPerms(s.me)
   const canMod = !isMe && !user.is_admin && (perms.has('suspend') || perms.has('ban'))
   const restricted = !!(user.banned || user.suspended_until)
@@ -373,7 +248,7 @@ function ProfileModal({ userId, abovePanel = false, onClose }) {
       { label: 'Принять заявку', icon: <IconCheck size={16} />, onClick: () => (async () => {
         try {
           await api(`/friends/requests/${reqId('incoming')}/accept`, { method: 'POST' })
-          // сразу создаём ЛС-канал — чат появится в списке слева
+          
           const dm = await api('/dm', { body: { user_id: userId } })
           ensureDMChannel(dm.channel)
           load()
@@ -394,8 +269,8 @@ function ProfileModal({ userId, abovePanel = false, onClose }) {
     ] : []),
   ])
 
-  // anchor near the last click, clamped to the viewport (Discord-style popout).
-  // when opened from the bottom-left user panel, pin it just above that panel instead.
+  
+  
   const W = 320
   const panelEl = abovePanel ? document.querySelector('.user-panel-wrap') : null
   const pr = panelEl?.getBoundingClientRect()
@@ -518,14 +393,8 @@ function ProfileModal({ userId, abovePanel = false, onClose }) {
     </>, document.body)
 }
 
-function abbrName(name) {
-  const words = String(name || '').trim().split(/\s+/)
-  if (words.length > 1) return (words[0][0] + words[1][0]).toUpperCase()
-  return (String(name || '?').slice(0, 2)).toUpperCase()
-}
-
 function shade(hex) {
-  // darken a #hex color for banner gradient end
+  
   try {
     const h = hex.replace('#', '')
     const full = h.length === 3 ? h.split('').map(c => c + c).join('') : h.slice(0, 6)

@@ -1,4 +1,4 @@
-// Custom status (text + activity icon) round-trip test.
+
 const BASE = 'http://localhost:3001'
 let failures = 0
 const ok = (n, c) => { console.log((c ? '✓' : '✗') + ' ' + n); if (!c) failures++ }

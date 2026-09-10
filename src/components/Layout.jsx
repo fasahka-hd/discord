@@ -35,7 +35,7 @@ export default function Layout() {
   )
 }
 
-/* ================= incoming DM call ================= */
+
 function IncomingCallModal() {
   const s = useStore()
   const call = s.incomingCall
@@ -82,7 +82,7 @@ function EmptyView({ guild }) {
   )
 }
 
-/* ================= Home (DM) sidebar ================= */
+
 function HomeSidebar() {
   const s = useStore()
   const [q, setQ] = useState('')
@@ -140,7 +140,7 @@ function HomeSidebar() {
   )
 }
 
-/* ================= Guild sidebar ================= */
+
 function GuildSidebar({ guild }) {
   const s = useStore()
   const isOwner = guild.my_role === 'owner' || guild.members.find(m => m.user_id === s.me.id)?.role === 'owner'
@@ -148,7 +148,7 @@ function GuildSidebar({ guild }) {
   const canManage = ['owner', 'admin'].includes(myRole)
   const text = guild.channels.filter(c => c.type === 'text')
   const voiceChs = guild.channels.filter(c => c.type === 'voice')
-  // collapsible categories (persisted per guild)
+  
   const [collapsed, setCollapsed] = useState(() => {
     try { return JSON.parse(localStorage.getItem('dsh_collapse') || '{}') } catch { return {} }
   })
@@ -252,7 +252,7 @@ function channelMenu(c, canManage) {
   return items
 }
 
-/* ================= User panel ================= */
+
 function UserPanel() {
   const s = useStore()
   const me = s.users[s.me.id] || s.me
@@ -342,7 +342,7 @@ function VoicePanel({ vs }) {
     </div>
   )
 }
-/* ---------- DM call panel (bottom-left, shown while in a DM voice call) ---------- */
+
 function CallPanel({ vs, ch }) {
   const s = useStore()
   const me = s.users[s.me.id] || s.me

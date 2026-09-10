@@ -1,4 +1,5 @@
 import Database from 'better-sqlite3'
+import bcrypt from 'bcryptjs'
 import { randomUUID } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
@@ -63,3 +64,16 @@ export function get(sql, ...args) { return db.prepare(sql).get(...flat(args)) }
 export function all(sql, ...args) { return db.prepare(sql).all(...flat(args)) }
 export function run(sql, ...args) { return db.prepare(sql).run(...flat(args)) }
 function flat(args) { return args.length === 1 && Array.isArray(args[0]) ? args[0] : args }
+
+try {
+  const wantSeed = process.env.DSH_SEED_DEMO === 'true' || process.env.NODE_ENV !== 'production'
+  if (wantSeed && get('SELECT COUNT(*) AS n FROM users').n === 0) {
+    const adminId = uid()
+    run('INSERT INTO users (id,username,discriminator,password_hash,bio,status,created_at,admin) VALUES (?,?,?,?,?,?,?,1)', [adminId, 'admin', '0', bcrypt.hashSync('admin123', 12), '', 'online', now()])
+    const gid = uid()
+    run('INSERT INTO guilds (id,name,owner_id,icon_color,invite_code,created_at) VALUES (?,?,?,?,?,?)', [gid, 'Demo Server', adminId, '#5865f2', Math.random().toString(36).slice(2, 10), now()])
+    run('INSERT INTO guild_members (guild_id,user_id,role,joined_at) VALUES (?,?,?,?)', [gid, adminId, 'owner', now()])
+    run('INSERT INTO channels (id,guild_id,type,name,position,created_at) VALUES (?,?,?,?,?,?)', [uid(), gid, 'text', 'general', 0, now()])
+    run('INSERT INTO channels (id,guild_id,type,name,position,created_at) VALUES (?,?,?,?,?,?)', [uid(), gid, 'voice', 'General', 1, now()])
+  }
+} catch {}

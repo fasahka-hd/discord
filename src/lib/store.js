@@ -1,4 +1,4 @@
-// Minimal observable store + React binding.
+
 let state = {
   ready: false,
   me: null,

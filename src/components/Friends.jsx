@@ -98,7 +98,7 @@ export default function Friends() {
                         e.stopPropagation()
                         try {
                           await api(`/friends/requests/${r.id}/accept`, { method: 'POST' })
-                          // сразу создаём ЛС-канал — чат появится в списке слева
+                          
                           const dm = await api('/dm', { body: { user_id: u.id } })
                           ensureDMChannel(dm.channel)
                         } catch (ex) { alert(ex.message) }

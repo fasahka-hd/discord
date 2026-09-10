@@ -4,7 +4,7 @@
   --ui-shadow: 0 18px 50px rgba(0,0,0,.28);
 }
 
-/* Modern Discord-like polish */
+
 body {
   background: var(--bg-darkest);
   transition: background .2s ease, color .2s ease;
@@ -43,7 +43,7 @@ button:active, .icon-btn:active { transform: translateY(1px); }
 .profile-card { border: 1px solid var(--ui-border); box-shadow: var(--ui-shadow); overflow: hidden; }
 .save-bar { backdrop-filter: blur(16px); border: 1px solid var(--ui-border); box-shadow: var(--ui-shadow); }
 
-/* Light mode */
+
 body.theme-light {
   --bg-app: #f2f3f5;
   --bg-darkest: #e3e5e8;
@@ -64,7 +64,7 @@ body.theme-light .chat-header { background: rgba(242,243,245,.9); }
 body.theme-light .sr-input { background: rgba(255,255,255,.75) !important; }
 body.theme-light .settings-nav { background: #e9eaec; }
 
-/* Accessibility / compact modes */
+
 body.ui-reduced-motion *, body.ui-reduced-motion *::before, body.ui-reduced-motion *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .001ms !important; }
 body.ui-large-text { font-size: 17px; }
 body.ui-large-text .msg .content { font-size: 17px; }
@@ -72,7 +72,7 @@ body.ui-compact .msg { margin-top: 5px; }
 body.ui-compact .msg.grouped { margin-top: 0; }
 body.ui-compact .channel-item { padding-top: 4px; padding-bottom: 4px; }
 
-/* Connection status injected by upgrade.js */
+
 #dsh-connection-status {
   position: fixed; left: 50%; top: 10px; transform: translate(-50%, -130%);
   z-index: 99999; padding: 8px 14px; border-radius: 999px;

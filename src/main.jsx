@@ -3,6 +3,8 @@ import { createRoot } from 'react-dom/client'
 import App from './App.jsx'
 import './styles.css'
 import './discord-polish.css'
+import './discord-upgrade.css'
+import './upgrade.js'
 import './components/ServerSettings.css'
 
 document.addEventListener('contextmenu', e => {

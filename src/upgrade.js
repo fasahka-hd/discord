@@ -74,5 +74,5 @@ async function checkHealth() {
 checkHealth()
 setInterval(checkHealth, 5000)
 
-// Mark the app as ready only after the initial document has rendered.
+
 requestAnimationFrame(() => document.documentElement.classList.add('dsh-ready'))

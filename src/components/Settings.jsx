@@ -178,7 +178,7 @@ function ProfileTab({ me }) {
       wsSend('presence', { status })
     } catch {}
   }
-  // live preview of how the profile will look — reflects the fields as you type, before Apply
+  
   const previewUser = { ...me, display_name: displayNameV || undefined, avatar: avatarV || undefined }
 
   return (
@@ -299,7 +299,7 @@ function VoiceTab() {
     return () => cleanupRef.current && cleanupRef.current()
   }, [])
   const startTest = async () => {
-    if (testing) { // stop
+    if (testing) { 
       cleanupRef.current && cleanupRef.current()
       cleanupRef.current = null
       setTesting(false)
@@ -325,7 +325,7 @@ function VoiceTab() {
       loop()
       setTesting(true)
       cleanupRef.current = () => { cancelAnimationFrame(raf); stream.getTracks().forEach(t => t.stop()); ctx.close().catch(() => {}) }
-    } catch { /* permission denied */ }
+    } catch {  }
   }
   return (
     <>

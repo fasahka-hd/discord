@@ -1,5 +1,5 @@
-// In-memory presence + voice state shared between REST and WS layers.
-export const presence = new Map() // userId -> { status, connCount }
+
+export const presence = new Map() 
 
 export function addPresence(userId, status = 'online') {
   const p = presence.get(userId)
@@ -19,7 +19,7 @@ export function setStatus(userId, status) {
 export function isOnline(userId) { return presence.has(userId) }
 export function getStatus(userId) { return presence.get(userId)?.status ?? 'offline' }
 
-// voice: channelId -> Map<userId, {muted, deafened, video}>
+
 export const voice = new Map()
 
 export function voiceJoin(channelId, userId, meta = {}) {

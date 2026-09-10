@@ -1,4 +1,4 @@
-// Focused test: DM voice call logging (connected-call end + missed call).
+
 import WebSocket from 'ws'
 const BASE = 'http://localhost:3001'
 let failures = 0
@@ -60,7 +60,7 @@ await bob.api(`/friends/requests/${inc.id}/accept`, { method: 'POST' })
 const dm = await alice.api('/dm', { body: { user_id: bob.user.id } })
 const chId = dm.channel.id
 
-// --- Test 1: connected call — start message on connect, duration message on end ---
+
 alice.send('voice:join', { channel_id: chId })
 await alice.waitFor('VOICE_INIT', d => d.channel_id === chId)
 await sleep(300)
@@ -69,20 +69,20 @@ await bob.waitFor('VOICE_INIT', d => d.channel_id === chId)
 const aStart = await alice.waitFor('MESSAGE_CREATE', d => /начал\(а\) голосовой звонок/.test(String(d.message.content)))
 const bStart = await bob.waitFor('MESSAGE_CREATE', d => /начал\(а\) голосовой звонок/.test(String(d.message.content)))
 ok('начало звонка: системное сообщение обоим', !!aStart && !!bStart)
-await sleep(1500) // let the call run a bit
+await sleep(1500) 
 alice.send('voice:leave', {})
-// both clients should receive a [SYS] message about the ended call
+
 const aMsg = await alice.waitFor('MESSAGE_CREATE', d => /продолжительностью/.test(String(d.message.content)))
 const bMsg = await bob.waitFor('MESSAGE_CREATE', d => /продолжительностью/.test(String(d.message.content)))
 ok('завершение звонка: системное сообщение отправлено', !!aMsg && !!bMsg)
 ok('текст звонка содержит «начал(а) звонок»', /начал\(а\) звонок/.test(aMsg.d.message.content))
 ok('указана длительность', /продолжительностью/.test(aMsg.d.message.content) && /секунд|минут|час/.test(aMsg.d.message.content))
-// persisted in history
+
 const hist = await alice.api(`/channels/${chId}/messages?limit=50`)
 const sysMsg = hist.messages.find(m => String(m.content).startsWith('[SYS]'))
 ok('сообщение сохранено в истории ЛС', !!sysMsg)
 
-// --- Test 2: missed call — alice joins alone, nobody answers for 30s ---
+
 bob.send('voice:leave', {})
 await sleep(300)
 alice.send('voice:join', { channel_id: chId })

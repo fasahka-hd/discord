@@ -139,7 +139,7 @@ function handle(ws, userId, msg) {
     }
     case 'voice:join': {
       const user = get('SELECT * FROM users WHERE id = ?', [userId]); const ch = channelById(d.channel_id)
-      if (!ch || ch.type !== 'voice' || !canAccess(user, ch)) return
+      if (!ch || (ch.type !== 'voice' && ch.type !== 'dm') || !canAccess(user, ch)) return
       const oldChId = userVoiceChannel(userId)
       if (oldChId === ch.id) return
       if (oldChId) { voiceLeave(oldChId, userId); const oldCh = channelById(oldChId); if (oldCh && !oldCh.guild_id) onVoiceLeaveDM(oldCh, userId); broadcastVoice(oldChId) }

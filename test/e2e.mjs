@@ -1,4 +1,4 @@
-// End-to-end smoke test for the Discord clone backend.
+
 import WebSocket from 'ws'
 
 const BASE = 'http://localhost:3001'
@@ -64,7 +64,7 @@ await alice.waitFor('HELLO')
 await bob.waitFor('HELLO')
 ok('websocket подключение', true)
 
-// friends
+
 await alice.api('/friends/request', { body: { username: bob.user.username } })
 await bob.waitFor('FRIENDS_UPDATE', d => d.incoming.some(i => i.user.id === alice.user.id))
 const inc = (await bob.api('/state')).incoming[0]
@@ -72,7 +72,7 @@ await bob.api(`/friends/requests/${inc.id}/accept`, { method: 'POST' })
 const aState = await alice.waitFor('FRIENDS_UPDATE', d => d.friends.some(f => f.id === bob.user.id)).then(() => alice.api('/state'))
 ok('дружба через заявку', aState.friends.some(f => f.id === bob.user.id))
 
-// DM
+
 const dm = await alice.api('/dm', { body: { user_id: bob.user.id } })
 ok('создание ЛС-канала', dm.channel.type === 'dm')
 await bob.waitFor('DM_CREATE')
@@ -80,7 +80,7 @@ const msg = await alice.api(`/channels/${dm.channel.id}/messages`, { body: { con
 const got = await bob.waitFor('MESSAGE_CREATE', d => d.message.id === msg.message.id)
 ok('доставка сообщения в ЛС по WS', !!got)
 
-// edit + delete + reaction
+
 await alice.api(`/messages/${msg.message.id}`, { method: 'PATCH', body: { content: 'привет, боб! (изм)' } })
 await bob.waitFor('MESSAGE_UPDATE', d => d.message.content.includes('изм'))
 ok('редактирование сообщения', true)
@@ -88,7 +88,7 @@ await bob.api(`/messages/${msg.message.id}/reactions`, { body: { emoji: '👍' }
 await alice.waitFor('REACTION', d => d.emoji === '👍')
 ok('реакция', true)
 
-// guild
+
 const g = await alice.api('/guilds', { body: { name: 'Тестовый сервер' } })
 ok('создание сервера', g.guild.channels.length === 2)
 await bob.api('/guilds/join', { body: { code: g.guild.invite_code } })
@@ -98,12 +98,12 @@ const gm = await alice.api(`/channels/${textCh.id}/messages`, { body: { content:
 await bob.waitFor('MESSAGE_CREATE', d => d.message.id === gm.message.id)
 ok('сообщение в канал сервера', true)
 
-// typing
+
 alice.send('typing', { channel_id: textCh.id })
 await bob.waitFor('TYPING', d => d.channel_id === textCh.id && d.user.id === alice.user.id)
 ok('индикатор набора текста', true)
 
-// voice signaling
+
 const voiceCh = g.guild.channels.find(c => c.type === 'voice')
 bob.send('voice:join', { channel_id: voiceCh.id })
 await alice.waitFor('VOICE_STATE', d => d.channel_id === voiceCh.id && d.states.some(s => s.user_id === bob.user.id))
@@ -120,28 +120,28 @@ alice.send('voice:leave')
 await bob.waitFor('VOICE_STATE', d => !d.states.some(s => s.user_id === alice.user.id))
 ok('выход из войса', true)
 
-// presence
+
 bob.send('presence', { status: 'dnd' })
 await alice.waitFor('PRESENCE', d => d.user_id === bob.user.id && d.status === 'dnd')
 ok('presence-статусы', true)
 
-// extended profile fields + USER_UPDATE propagation
+
 await bob.api('/me', { method: 'PATCH', body: { display_name: 'Bob The Great', pronouns: 'he/him', banner_color: '#eb459e' } })
 const uu = await alice.waitFor('USER_UPDATE', d => d.user.id === bob.user.id && d.user.display_name === 'Bob The Great')
 ok('расширенный профиль (display_name/pronouns/banner) + рассылка', !!uu)
 const prof = await alice.api(`/users/${bob.user.id}`)
 ok('профиль отдаёт новые поля', prof.user.pronouns === 'he/him' && prof.user.banner_color === '#eb459e')
 
-// guild create pushes GUILD_UPDATE to creator via WS
+
 const g2 = await alice.api('/guilds', { body: { name: 'Auto Push Test' } })
 await alice.waitFor('GUILD_UPDATE', d => d.guild.id === g2.guild.id)
 ok('создание сервера пушится без F5', true)
 
-// search
+
 const sr = await alice.api('/search?q=' + encodeURIComponent('привет'))
 ok('поиск по сообщениям', sr.messages.length > 0)
 
-// unread + read
+
 const st2 = await bob.api('/state')
 const dm2 = st2.dmChannels.find(c => c.id === dm.channel.id)
 ok('непрочитанные в ЛС', dm2 && dm2.unread >= 1)
@@ -149,13 +149,13 @@ await bob.api(`/channels/${dm.channel.id}/read`, { method: 'POST' })
 const st3 = await bob.api('/state')
 ok('сброс непрочитанных', st3.dmChannels.find(c => c.id === dm.channel.id).unread === 0)
 
-// permissions: bob cannot post to alice-only guild after removal
+
 await alice.api(`/guilds/${g.guild.id}/members/${bob.user.id}`, { method: 'DELETE' })
 let denied = false
 try { await bob.api(`/channels/${textCh.id}/messages`, { body: { content: 'хак' } }) } catch (e) { denied = e.message.includes('403') }
 ok('доступ к каналу закрыт после кика', denied)
 
-// ---------- badges ----------
+
 const admin = new Client('admin')
 {
   const r = await fetch(BASE + '/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: 'admin', password: 'admin123' }) })
@@ -188,7 +188,7 @@ await admin.api(`/admin/users/${bob.user.id}/badges`, { method: 'PUT', body: { b
 const bu3 = await bob.waitFor('ME_UPDATE', d => d.user.id === bob.user.id && d.user.badges.length === 0)
 ok('снятие всех бейджей', !!bu3)
 
-// ---------- moderation rights from badges ----------
+
 const carol = new Client('carol_' + Date.now().toString(36))
 await carol.login()
 await carol.connectWS()

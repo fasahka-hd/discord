@@ -2,9 +2,10 @@ import express from 'express'
 import { get, all, run, uid, now } from './db.js'
 import { authMiddleware, httpError } from './auth.js'
 import { sendToUsers } from './hub.js'
+import { pushGuild } from './api.js'
 
 export const featuresRouter = express.Router()
-const wrap=fn=>(req,res,next)=>{try{return fn(req,res,next)}catch(e){return next(e)}}
+const wrap=fn=>(req,res,next)=>{try{const r=fn(req,res,next);if(r&&typeof r.catch==='function')return r.catch(next);return r}catch(e){return next(e)}}
 function channel(id){return get('SELECT * FROM channels WHERE id=?',id)}
 function member(gid,uid){return get('SELECT * FROM guild_members WHERE guild_id=? AND user_id=?',[gid,uid])}
 function manager(gid,uid){const r=member(gid,uid)?.role;if(!['owner','admin'].includes(r))throw httpError(403,'Недостаточно прав')}
@@ -12,7 +13,6 @@ function audience(ch){return ch.guild_id?all('SELECT user_id FROM guild_members 
 
 featuresRouter.get('/health',wrap((req,res)=>res.json({ok:true,status:'online',time:now()})))
 
-/* Secure invite join flow with expiration and usage limits. */
 featuresRouter.post('/invites/:code/join',authMiddleware,wrap((req,res)=>{
   const invite=get('SELECT * FROM invites WHERE code=?',req.params.code)
   if(!invite)throw httpError(404,'Приглашение недействительно')
@@ -22,11 +22,9 @@ featuresRouter.post('/invites/:code/join',authMiddleware,wrap((req,res)=>{
   if(member(invite.guild_id,req.user.id))return res.json({ok:true,joined:false,guild_id:invite.guild_id})
   run('INSERT INTO guild_members (guild_id,user_id,role,joined_at) VALUES (?,?,?,?)',[invite.guild_id,req.user.id,'member',now()])
   run('UPDATE invites SET uses=uses+1 WHERE code=?',invite.code)
-  sendToUsers([req.user.id],{t:'GUILD_UPDATE',d:{guild_id:invite.guild_id}})
+  pushGuild(invite.guild_id,[req.user.id])
   res.json({ok:true,joined:true,guild_id:invite.guild_id})
 }))
-
-/* Threads */
 featuresRouter.get('/channels/:id/threads',authMiddleware,wrap((req,res)=>{
   const ch=channel(req.params.id)
   if(!ch||!((ch.guild_id&&member(ch.guild_id,req.user.id))||(!ch.guild_id&&get('SELECT 1 FROM dm_recipients WHERE channel_id=? AND user_id=?',[ch.id,req.user.id]))))throw httpError(404,'Канал не найден')
@@ -61,7 +59,6 @@ featuresRouter.delete('/threads/:id',authMiddleware,wrap((req,res)=>{
   run('DELETE FROM threads WHERE id=?',t.id);res.json({ok:true})
 }))
 
-/* Pins */
 featuresRouter.get('/channels/:id/pins',authMiddleware,wrap((req,res)=>{
   const ch=channel(req.params.id);if(!ch)throw httpError(404,'Канал не найден')
   const access=ch.guild_id?member(ch.guild_id,req.user.id):get('SELECT 1 FROM dm_recipients WHERE channel_id=? AND user_id=?',[ch.id,req.user.id])
